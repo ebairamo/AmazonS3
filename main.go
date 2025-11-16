@@ -1,9 +1,12 @@
 package main
 
 import (
+	"encoding/csv"
 	"flag"
 	"fmt"
 	"net/http"
+	"os"
+	"s3/bucket"
 )
 
 func main() {
@@ -14,7 +17,29 @@ func main() {
 	if *helpFlag {
 		help()
 	}
-	fmt.Println(*helpFlag, *dirFlag)
+	_, err := os.Stat("data/" + *dirFlag)
+	if err != nil {
+		if os.IsNotExist(err) {
+			err = os.MkdirAll("data/"+*dirFlag, 0755)
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+
+	bucketPath := "data/" + *dirFlag + "/bucket.csv"
+	_, err = os.Stat(bucketPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			WriteTitle(*dirFlag)
+
+		}
+	}
+	fmt.Println(*dirFlag)
+
+	err = bucket.ValidateContainerName("my-bucket")
+	fmt.Println(err) // должно быть nil
+
 	http.HandleFunc("/", HandlerS3)
 	http.ListenAndServe(*portFlag, nil)
 }
@@ -37,4 +62,25 @@ Simple Storage Service.
 - --help     Show this screen.
 - --port N   Port number
 - --dir S    Path to the directory`)
+}
+
+func WriteTitle(dataDir string) {
+	file, err := os.Create("data/" + dataDir + "/bucket.csv")
+	if err != nil {
+		fmt.Println("ошибка создания файла")
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
+
+	data := [][]string{
+		{"Name", "CreationTime"},
+	}
+	for _, record := range data {
+		err := writer.Write(record)
+		if err != nil {
+			fmt.Println("ошибка записи файла")
+		}
+	}
+	writer.Flush()
 }
