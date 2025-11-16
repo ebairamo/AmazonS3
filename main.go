@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"s3/bucket"
+	"s3/handlers"
 )
 
 func main() {
@@ -35,19 +36,13 @@ func main() {
 
 		}
 	}
-	fmt.Println(*dirFlag)
 
+	storageDir := "data/" + *dirFlag
+	mux := handlers.ServerMux(storageDir)
 	err = bucket.ValidateContainerName("my-bucket")
 	fmt.Println(err) // должно быть nil
 
-	http.HandleFunc("/", HandlerS3)
-	http.ListenAndServe(*portFlag, nil)
-}
-
-func HandlerS3(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Method:", r.Method)
-	fmt.Println("Path:", r.URL.Path)
-	fmt.Fprintf(w, "I received your request!")
+	http.ListenAndServe(*portFlag, mux)
 }
 
 func help() {
