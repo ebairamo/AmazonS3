@@ -3,7 +3,6 @@ package handlers
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"s3/bucket"
 	"s3/storage"
 	"strings"
@@ -50,9 +49,10 @@ func BucketCreate(w http.ResponseWriter, r *http.Request, storageDir string) {
 		sendError(w, http.StatusConflict, "Conflict", "Bucket is alredy exsist")
 		return
 	}
-	err = os.Mkdir(storageDir, 0755)
+
+	err = storage.CreateBucket(bucketName, storageDir)
 	if err != nil {
-		sendError(w, http.StatusInternalServerError, "InternalServer", err.Error())
+		sendError(w, http.StatusInternalServerError, "InternalError", err.Error())
 		return
 	}
 }
