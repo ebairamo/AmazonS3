@@ -13,29 +13,38 @@ func ServerMux(storageDir string) *http.ServeMux {
 
 	// Используем замыкание тут!
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.Method == http.MethodPut:
-			BucketCreate(w, r, storageDir)
-		case r.Method == http.MethodGet:
-			GetBucket(w, r, storageDir)
-		case r.Method == http.MethodDelete:
-			DeleteBucket(w, r, storageDir)
-		}
 
-	})
-	mux.HandleFunc("{BucketName}/{ObjectKey}", func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.Method == http.MethodPut:
-			fmt.Println(r.URL.Path)
+		parts := strings.Split(r.URL.Path, "/")
+		fmt.Println(len(parts), parts[1])
+		bucketName := parts[1]
+		if len(parts) >= 3 {
+			objectName := parts[2]
+			switch {
+			case r.Method == http.MethodPut:
+				ObjectCreate(w, r, storageDir, bucketName, objectName)
+			}
+
+			fmt.Println(bucketName, "object", objectName)
+			return
+		}
+		if len(parts) >= 2 {
+			switch {
+			case r.Method == http.MethodPut:
+				BucketCreate(w, r, storageDir, bucketName)
+			case r.Method == http.MethodGet:
+				GetBucket(w, r, storageDir, bucketName)
+			case r.Method == http.MethodDelete:
+				DeleteBucket(w, r, storageDir, bucketName)
+			}
 
 		}
 	})
+
 	return mux
 }
 
-func BucketCreate(w http.ResponseWriter, r *http.Request, storageDir string) {
+func BucketCreate(w http.ResponseWriter, r *http.Request, storageDir string, bucketName string) {
 
-	bucketName := strings.Trim(r.URL.Path, "/")
 	fmt.Println(bucketName)
 	err := bucket.ValidateContainerName(bucketName)
 	if err != nil {
@@ -59,8 +68,10 @@ func BucketCreate(w http.ResponseWriter, r *http.Request, storageDir string) {
 		return
 	}
 }
-func DeleteBucket(w http.ResponseWriter, r *http.Request, storageDir string) {
-	bucketName := strings.Trim(r.URL.Path, "/")
+func ObjectCreate(w http.ResponseWriter, r *http.Request, storageDir string, bucketName string, objectName string) {
+	fmt.Println(storageDir, bucketName, objectName)
+}
+func DeleteBucket(w http.ResponseWriter, r *http.Request, storageDir string, bucketName string) {
 
 	isExist, err := storage.BucketExists(bucketName, storageDir)
 	if err != nil {
@@ -71,6 +82,15 @@ func DeleteBucket(w http.ResponseWriter, r *http.Request, storageDir string) {
 		sendError(w, http.StatusNotFound, "NotFound", "Error Bucket not exist")
 		return
 	}
+	isEmpty, err := storage.IsBucketEmpty(bucketName, storageDir)
+	if err != nil {
+		sendError(w, http.StatusConflict, "Conflict", err.Error())
+		return
+	}
+	if !isEmpty {
+		sendError(w, http.StatusConflict, "Conflict", "Error Bucket is not empty")
+		return
+	}
 	err = storage.DeleteBucket(bucketName, storageDir)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "InternalError", err.Error())
@@ -78,8 +98,8 @@ func DeleteBucket(w http.ResponseWriter, r *http.Request, storageDir string) {
 	}
 	fmt.Println(bucketName)
 }
-func GetBucket(w http.ResponseWriter, r *http.Request, storageDir string) {
-	err := storage.GetBucket(w, r, storageDir)
+func GetBucket(w http.ResponseWriter, r *http.Request, storageDir string, bucketName string) {
+	err := storage.GetBucket(w, r, storageDir, bucketName)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "InternalError", err.Error())
 		return

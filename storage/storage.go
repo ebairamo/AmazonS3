@@ -33,12 +33,6 @@ func BucketExists(bucketName string, storageDir string) (bool, error) {
 			return true, nil
 		}
 	}
-
-	// что нужно сделать?
-	// 1. Открыть файл storageDir + "/buckets.csv"
-	// 2. Прочитать все строки
-	// 3. Найти bucketName
-	// 4. Вернуть true если нашли, false если нет
 	return false, nil
 }
 
@@ -73,14 +67,40 @@ func CreateBucket(bucketName string, storageDir string) error {
 }
 
 func DeleteBucket(bucketName string, storageDir string) error {
+
 	bucketDir := storageDir + "/" + bucketName
-	err := os.Remove(bucketDir)
+	err := os.RemoveAll(bucketDir)
 	if err != nil {
 		return err
 	}
+
+	file, err := os.Open(storageDir + "/bucket.csv")
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	ReaderCsv := csv.NewReader(file)
+	records, err := ReaderCsv.ReadAll()
+	if err != nil {
+		return err
+	}
+	newRecords := [][]string{}
+	for _, record := range records {
+		if record[0] != bucketName {
+			newRecords = append(newRecords, record)
+		}
+	}
+	file, err = os.Create(storageDir + "/bucket.csv")
+	if err != nil {
+		return err
+	}
+	writer := csv.NewWriter(file)
+	writer.WriteAll(newRecords)
+	file.Close()
 	return nil
 }
-func GetBucket(w http.ResponseWriter, r *http.Request, storageDir string) error {
+func GetBucket(w http.ResponseWriter, r *http.Request, storageDir string, bucketName string) error {
 	bucketCsvPath := storageDir + "/bucket.csv"
 	var buckets []models.Bucket
 	file, err := os.Open(bucketCsvPath)
@@ -117,4 +137,31 @@ func GetBucket(w http.ResponseWriter, r *http.Request, storageDir string) error 
 	w.WriteHeader(http.StatusOK)
 	xml.NewEncoder(w).Encode(response)
 	return nil
+}
+
+func IsBucketEmpty(bucketName, storageDir string) (bool, error) {
+	objectPath := storageDir + "/" + bucketName + "/objects.csv"
+	file, err := os.Open(objectPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return true, nil
+		}
+		return true, err
+	}
+	defer file.Close()
+	reader := csv.NewReader(file)
+
+	records, err := reader.ReadAll()
+	if err != nil {
+		return false, err
+	}
+	for i, _ := range records {
+		if i == 1 {
+			return false, nil
+		}
+	}
+	// проверить существует ли objects.csv
+	// если нет → return true, nil
+	// если есть → прочитать, проверить количество строк
+	return true, nil
 }
