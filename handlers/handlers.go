@@ -78,7 +78,7 @@ func DeleteBucket(w http.ResponseWriter, r *http.Request, storageDir string, buc
 		sendError(w, http.StatusNotFound, "NotFound", err.Error())
 		return
 	}
-	if isExist == false {
+	if isExist {
 		sendError(w, http.StatusNotFound, "NotFound", "Error Bucket not exist")
 		return
 	}
