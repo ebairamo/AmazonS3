@@ -1,13 +1,20 @@
 package models
 
-import "time"
+import (
+	"encoding/xml"
+	"time"
+)
 
 type Bucket struct {
-	Name         string
-	CreationTime time.Time
+	Name         string    `xml:"Name"`
+	CreationTime time.Time `xml:"CreationDate"`
 }
 
-type BucketXml struct {
-	Name         string `xml:"name"`
-	CreationDate string `xml:"creationDate"`
+type BucketsAll struct {
+	Buckets []Bucket `xml:"Bucket"`
+}
+
+type ListAllBucketsResult struct {
+	XMLName xml.Name   `xml:"ListAllBucketsResult"`
+	Buckets BucketsAll `xml:"Buckets"`
 }

@@ -2,6 +2,7 @@ package storage
 
 import (
 	"encoding/csv"
+	"encoding/xml"
 	"fmt"
 	"net/http"
 	"os"
@@ -71,6 +72,14 @@ func CreateBucket(bucketName string, storageDir string) error {
 	return nil
 }
 
+func DeleteBucket(bucketName string, storageDir string) error {
+	bucketDir := storageDir + "/" + bucketName
+	err := os.Remove(bucketDir)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 func GetBucket(w http.ResponseWriter, r *http.Request, storageDir string) error {
 	bucketCsvPath := storageDir + "/bucket.csv"
 	var buckets []models.Bucket
@@ -91,13 +100,21 @@ func GetBucket(w http.ResponseWriter, r *http.Request, storageDir string) error 
 		if err != nil {
 			return err
 		}
-		Bucket := models.BucketXml{
+		Bucket := models.Bucket{
 			Name:         record[0],
-			CreationDate: t,
+			CreationTime: t,
 		}
 		buckets = append(buckets, Bucket)
 	}
-	fmt.Println(buckets)
 
+	response := models.ListAllBucketsResult{
+		Buckets: models.BucketsAll{
+			Buckets: buckets,
+		},
+	}
+
+	w.Header().Set("Content-Type", "application/xml")
+	w.WriteHeader(http.StatusOK)
+	xml.NewEncoder(w).Encode(response)
 	return nil
 }
