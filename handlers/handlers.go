@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"s3/bucket"
+	"s3/object"
 	"s3/storage"
 	"strings"
 )
@@ -69,6 +70,25 @@ func BucketCreate(w http.ResponseWriter, r *http.Request, storageDir string, buc
 	}
 }
 func ObjectCreate(w http.ResponseWriter, r *http.Request, storageDir string, bucketName string, objectName string) {
+	isExist, err := storage.BucketExists(bucketName, storageDir)
+	if err != nil {
+		sendError(w, http.StatusNotFound, "Not Found", err.Error())
+		return
+	}
+	if !isExist {
+		sendError(w, http.StatusNotFound, "Not Found", "Bucket is not exsist")
+		return
+	}
+	err = object.ValidateObjectKey(objectName)
+	if err != nil {
+		sendError(w, http.StatusBadRequest, "Bad Request", err.Error())
+		return
+	}
+	err = storage.CreateObject(storageDir, bucketName, objectName, r)
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "InternalError", err.Error())
+		return
+	}
 	fmt.Println(storageDir, bucketName, objectName)
 }
 func DeleteBucket(w http.ResponseWriter, r *http.Request, storageDir string, bucketName string) {
