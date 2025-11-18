@@ -103,11 +103,12 @@ func DeleteBucket(w http.ResponseWriter, r *http.Request, storageDir string, buc
 		return
 	}
 	isEmpty, err := storage.IsBucketEmpty(bucketName, storageDir)
+	fmt.Println("isEmpty", isEmpty)
 	if err != nil {
 		sendError(w, http.StatusConflict, "Conflict", err.Error())
 		return
 	}
-	if !isEmpty {
+	if isEmpty {
 		sendError(w, http.StatusConflict, "Conflict", "Error Bucket is not empty")
 		return
 	}

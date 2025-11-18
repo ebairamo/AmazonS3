@@ -189,9 +189,10 @@ func CreateObject(storageDir, bucketName, objectName string, body io.Reader, con
 			return err
 		}
 		writer := csv.NewWriter(f)
-
+		sizeString := strconv.Itoa(int(size))
 		data := [][]string{
 			{"ObjectKey", "Size", "ContentType", "LastModified"},
+			{objectName, sizeString, contentType, time.Now().Format(time.RFC3339)},
 		}
 		for _, record := range data {
 			err := writer.Write(record)
