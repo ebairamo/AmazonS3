@@ -75,8 +75,8 @@ func ObjectCreate(w http.ResponseWriter, r *http.Request, storageDir string, buc
 		sendError(w, http.StatusNotFound, "Not Found", err.Error())
 		return
 	}
-	if !isExist {
-		sendError(w, http.StatusNotFound, "Not Found", "Bucket is not exsist")
+	if isExist {
+		sendError(w, http.StatusNotFound, "Not Found", "Bucket is not exsist !")
 		return
 	}
 	err = object.ValidateObjectKey(objectName)
@@ -84,7 +84,7 @@ func ObjectCreate(w http.ResponseWriter, r *http.Request, storageDir string, buc
 		sendError(w, http.StatusBadRequest, "Bad Request", err.Error())
 		return
 	}
-	err = storage.CreateObject(storageDir, bucketName, objectName, r)
+	err = storage.CreateObject(storageDir, bucketName, objectName, r.Body, r.Header.Get("Content-Type"), r.ContentLength)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "InternalError", err.Error())
 		return

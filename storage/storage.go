@@ -4,9 +4,11 @@ import (
 	"encoding/csv"
 	"encoding/xml"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"s3/models"
+	"strconv"
 	"time"
 )
 
@@ -164,4 +166,56 @@ func IsBucketEmpty(bucketName, storageDir string) (bool, error) {
 	// если нет → return true, nil
 	// если есть → прочитать, проверить количество строк
 	return true, nil
+}
+
+func CreateObject(storageDir, bucketName, objectName string, body io.Reader, contentType string, size int64) error {
+	fileNamePath := storageDir + "/" + bucketName + "/" + objectName
+	fileName := storageDir + "/" + bucketName + "/object.csv"
+	file, err := os.Create(fileNamePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	_, err = io.Copy(file, body)
+	if err != nil {
+		return err
+	}
+
+	if _, err = os.Stat(fileName); os.IsNotExist(err) {
+
+		f, err := os.Create(fileName)
+		if err != nil {
+			return err
+		}
+		writer := csv.NewWriter(f)
+
+		data := [][]string{
+			{"ObjectKey", "Size", "ContentType", "LastModified"},
+		}
+		for _, record := range data {
+			err := writer.Write(record)
+			if err != nil {
+				fmt.Println("ошибка записи файла")
+				return err
+			}
+		}
+		writer.Flush()
+	} else {
+		sizeString := strconv.Itoa(int(size))
+		flag := os.O_APPEND | os.O_WRONLY
+		f, _ := os.OpenFile(fileName, flag, 0660)
+
+		writer := csv.NewWriter(f)
+		data := [][]string{
+			{objectName, sizeString, contentType, time.Now().Format(time.RFC3339)},
+		}
+		for _, record := range data {
+			err = writer.Write(record)
+		}
+		writer.Flush()
+		fmt.Println("OPEN FILE")
+
+	}
+	return nil
 }
