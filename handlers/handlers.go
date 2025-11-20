@@ -23,6 +23,8 @@ func ServerMux(storageDir string) *http.ServeMux {
 			switch {
 			case r.Method == http.MethodPut:
 				ObjectCreate(w, r, storageDir, bucketName, objectName)
+			case r.Method == http.MethodGet:
+				GetObject(w, r, storageDir, bucketName, objectName)
 			}
 
 			fmt.Println(bucketName, "object", objectName)
@@ -123,6 +125,13 @@ func GetBucket(w http.ResponseWriter, r *http.Request, storageDir string, bucket
 	err := storage.GetBucket(w, r, storageDir, bucketName)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "InternalError", err.Error())
+		return
+	}
+}
+func GetObject(w http.ResponseWriter, r *http.Request, storageDir string, bucketName string, objectName string) {
+	err := storage.GetObject(w, r, storageDir, bucketName, objectName)
+	if err != nil {
+		sendError(w, http.StatusNotFound, "NotFound", err.Error())
 		return
 	}
 }

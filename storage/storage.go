@@ -220,3 +220,19 @@ func CreateObject(storageDir, bucketName, objectName string, body io.Reader, con
 	}
 	return nil
 }
+
+func GetObject(w http.ResponseWriter, r *http.Request, storageDir string, bucketName string, objectName string) error {
+	objectDir := storageDir + "/" + bucketName + "/" + objectName
+
+	file, err := os.Open(objectDir)
+	if err != nil {
+		return err
+	}
+	_, err = io.Copy(w, file)
+	if err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/xml")
+
+	return nil
+}
