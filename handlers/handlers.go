@@ -25,6 +25,8 @@ func ServerMux(storageDir string) *http.ServeMux {
 				ObjectCreate(w, r, storageDir, bucketName, objectName)
 			case r.Method == http.MethodGet:
 				GetObject(w, r, storageDir, bucketName, objectName)
+			case r.Method == http.MethodDelete:
+				DeleteObject(w, r, storageDir, bucketName, objectName)
 			}
 
 			fmt.Println(bucketName, "object", objectName)
@@ -128,10 +130,24 @@ func GetBucket(w http.ResponseWriter, r *http.Request, storageDir string, bucket
 		return
 	}
 }
+
 func GetObject(w http.ResponseWriter, r *http.Request, storageDir string, bucketName string, objectName string) {
 	err := storage.GetObject(w, r, storageDir, bucketName, objectName)
 	if err != nil {
 		sendError(w, http.StatusNotFound, "NotFound", err.Error())
 		return
 	}
+}
+
+func DeleteObject(w http.ResponseWriter, r *http.Request, storageDir string, bucketName string, objectName string) {
+	isExist, err := storage.BucketExists(bucketName, storageDir)
+	if err != nil {
+		sendError(w, http.StatusNotFound, "Not Found", err.Error())
+		return
+	}
+	if isExist {
+		sendError(w, http.StatusNotFound, "Not Found", "Bucket is not exsist !")
+		return
+	}
+
 }
