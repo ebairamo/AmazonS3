@@ -44,7 +44,7 @@ func CreateBucket(bucketName string, storageDir string) error {
 		return err
 	}
 	flag := os.O_APPEND | os.O_WRONLY
-	file, err := os.OpenFile(storageDir+"/bucket.csv", flag, 0644)
+	file, err := os.OpenFile(storageDir+"/buckets.csv", flag, 0644)
 	if err != nil {
 		return err
 	}
@@ -76,7 +76,7 @@ func DeleteBucket(bucketName string, storageDir string) error {
 		return err
 	}
 
-	file, err := os.Open(storageDir + "/bucket.csv")
+	file, err := os.Open(storageDir + "/buckets.csv")
 	if err != nil {
 		return err
 	}
@@ -93,7 +93,7 @@ func DeleteBucket(bucketName string, storageDir string) error {
 			newRecords = append(newRecords, record)
 		}
 	}
-	file, err = os.Create(storageDir + "/bucket.csv")
+	file, err = os.Create(storageDir + "/buckets.csv")
 	if err != nil {
 		return err
 	}
@@ -102,8 +102,8 @@ func DeleteBucket(bucketName string, storageDir string) error {
 	file.Close()
 	return nil
 }
-func GetBucket(w http.ResponseWriter, r *http.Request, storageDir string, bucketName string) error {
-	bucketCsvPath := storageDir + "/bucket.csv"
+func GetBucket(w http.ResponseWriter, r *http.Request, storageDir string) error {
+	bucketCsvPath := storageDir + "/buckets.csv"
 	var buckets []models.Bucket
 	file, err := os.Open(bucketCsvPath)
 	if err != nil {
@@ -170,7 +170,7 @@ func IsBucketEmpty(bucketName, storageDir string) (bool, error) {
 
 func CreateObject(storageDir, bucketName, objectName string, body io.Reader, contentType string, size int64) error {
 	fileNamePath := storageDir + "/" + bucketName + "/" + objectName
-	fileName := storageDir + "/" + bucketName + "/object.csv"
+	fileName := storageDir + "/" + bucketName + "/objects.csv"
 	file, err := os.Create(fileNamePath)
 	if err != nil {
 		return err
@@ -203,36 +203,83 @@ func CreateObject(storageDir, bucketName, objectName string, body io.Reader, con
 		}
 		writer.Flush()
 	} else {
+		file, err := os.Open(fileName)
+		if err != nil {
+			return err
+		}
+		records, err := csv.NewReader(file).ReadAll() // ← сразу в records!
+		file.Close()
+		if err != nil {
+			return err
+		}
+
 		sizeString := strconv.Itoa(int(size))
-		flag := os.O_APPEND | os.O_WRONLY
-		f, _ := os.OpenFile(fileName, flag, 0660)
+		found := false
+
+		for i, record := range records {
+			if i == 0 {
+				continue
+			} // пропустить заголовки
+
+			if record[0] == objectName {
+				// Обновить существующую строку
+				records[i] = []string{objectName, sizeString, contentType, time.Now().Format(time.RFC3339)}
+				found = true
+				break
+			}
+		}
+
+		if !found { // ← ПОСЛЕ цикла!
+			// Добавить новую строку
+			records = append(records, []string{objectName, sizeString, contentType, time.Now().Format(time.RFC3339)})
+		}
+
+		// Перезаписать файл
+		f, err := os.Create(fileName) // ← Create, не OpenFile!
+		if err != nil {
+			return err
+		}
+		defer f.Close()
 
 		writer := csv.NewWriter(f)
-		data := [][]string{
-			{objectName, sizeString, contentType, time.Now().Format(time.RFC3339)},
-		}
-		for _, record := range data {
-			err = writer.Write(record)
-		}
+		writer.WriteAll(records) // ← WriteAll сразу всё
 		writer.Flush()
-		fmt.Println("OPEN FILE")
-
 	}
 	return nil
 }
 
 func GetObject(w http.ResponseWriter, r *http.Request, storageDir string, bucketName string, objectName string) error {
 	objectDir := storageDir + "/" + bucketName + "/" + objectName
+	objectCsvDir := storageDir + "/" + bucketName + "/objects.csv"
+	var ContentType string
+	var SizeString string
+	f, err := os.Open(objectCsvDir)
+	if err != nil {
+		return err
+	}
+	reader := csv.NewReader(f)
+	records, err := reader.ReadAll()
+	if err != nil {
+		return err
+	}
+	for _, record := range records {
+		if record[0] == objectName {
+			ContentType = record[2]
+			SizeString = record[1]
+		}
+	}
 
+	w.Header().Set("Content-Type", ContentType)
+	w.Header().Set("Content-Length", SizeString)
 	file, err := os.Open(objectDir)
 	if err != nil {
 		return err
 	}
+
 	_, err = io.Copy(w, file)
 	if err != nil {
 		return err
 	}
-	w.Header().Set("Content-Type", "application/xml")
 
 	return nil
 }

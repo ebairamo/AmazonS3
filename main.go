@@ -28,7 +28,7 @@ func main() {
 		}
 	}
 
-	bucketPath := "data/" + *dirFlag + "/bucket.csv"
+	bucketPath := "data/" + *dirFlag + "/buckets.csv"
 	_, err = os.Stat(bucketPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -60,7 +60,7 @@ Simple Storage Service.
 }
 
 func WriteTitle(dataDir string) {
-	file, err := os.Create("data/" + dataDir + "/bucket.csv")
+	file, err := os.Create("data/" + dataDir + "/buckets.csv")
 	if err != nil {
 		fmt.Println("ошибка создания файла")
 	}
