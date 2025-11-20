@@ -158,5 +158,18 @@ func DeleteObject(w http.ResponseWriter, r *http.Request, storageDir string, buc
 		sendError(w, http.StatusNotFound, "Not Found", "Bucket is not exsist !")
 		return
 	}
-
+	isExist, err = storage.ObjectExists(bucketName, storageDir, objectName)
+	if err != nil {
+		sendError(w, http.StatusNotFound, "Not Found", err.Error())
+		return
+	}
+	if !isExist {
+		sendError(w, http.StatusNotFound, "Not Found", "Object not exsist")
+		return
+	}
+	err = storage.DeleteObject(w, r, storageDir, bucketName, objectName)
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "Internal Error", err.Error())
+		return
+	}
 }

@@ -37,6 +37,34 @@ func BucketExists(bucketName string, storageDir string) (bool, error) {
 	}
 	return false, nil
 }
+func ObjectExists(bucketName string, storageDir string, objectName string) (bool, error) {
+	objectDir := storageDir + "/" + bucketName + "/objects.csv"
+	fmt.Println(objectDir)
+	file, err := os.Open(objectDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		} else {
+			return false, err
+		}
+	}
+	reader := csv.NewReader(file)
+	records, err := reader.ReadAll()
+	if err != nil {
+		return false, err
+	}
+	for i, record := range records {
+
+		if i == 0 {
+			continue
+		}
+		if record[0] == objectName {
+			fmt.Println(record)
+			return true, nil
+		}
+	}
+	return false, nil
+}
 
 func CreateBucket(bucketName string, storageDir string) error {
 	err := os.Mkdir(storageDir+"/"+bucketName, 0755)
@@ -281,5 +309,44 @@ func GetObject(w http.ResponseWriter, r *http.Request, storageDir string, bucket
 		return err
 	}
 
+	return nil
+}
+
+func DeleteObject(w http.ResponseWriter, r *http.Request, storageDir string, bucketName string, objectName string) error {
+	object := storageDir + "/" + bucketName + "/" + objectName
+	newRecords := [][]string{}
+	err := os.Remove(object)
+	if err != nil {
+		return err
+	}
+	objectCsvDir := storageDir + "/" + bucketName + "/objects.csv"
+	file, err := os.Open(objectCsvDir)
+	if err != nil {
+		return err
+	}
+	reader := csv.NewReader(file)
+	records, err := reader.ReadAll()
+	if err != nil {
+		return err
+	}
+	for _, record := range records {
+
+		if record[0] != objectName {
+			newRecords = append(newRecords, record)
+		}
+	}
+	file.Close()
+
+	f, err := os.Create(objectCsvDir)
+	if err != nil {
+		return err
+	}
+
+	writer := csv.NewWriter(f)
+	writer.WriteAll(newRecords)
+	writer.Flush()
+
+	w.WriteHeader(http.StatusNoContent)
+	defer f.Close()
 	return nil
 }
